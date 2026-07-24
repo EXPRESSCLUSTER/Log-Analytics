@@ -1,8 +1,8 @@
 # ECX log analysis with Azure Log Analytics
-   
-To analyze ECX log file on Azure Log Analytics, the log file must meet the following criteria:
 
-- The log must either have a single entry per line or use a timestamp matching one of the following formats at the start of each entry:
+To analyze an ECX log file in Azure Log Analytics, the log file must meet the following criteria:
+
+- The log must either have a single entry per line, or use a timestamp matching one of the following formats at the start of each entry:
     ```
     YYYY-MM-DD HH:MM:SS
     M/D/YYYY HH:MM:SS AM/PM
@@ -13,34 +13,37 @@ To analyze ECX log file on Azure Log Analytics, the log file must meet the follo
     dd/MMM/yyyy:HH:mm:ss zzz
     yyyy-MM-ddTHH:mm:ssK
     ```
-- The log file must not allow circular logging. This behavior is log rotation where the file is overwritten with new entries or the file is renamed and the same file name is reused for continued logging.
-- The log file must use ASCII or UTF-8 encoding. Other formats such as UTF-16 aren't supported.
-- For Linux, time zone conversion isn't supported for time stamps in the logs.
-- As a best practice, the log file should include the date and time that it was created to prevent log rotation overwriting or renaming.
+- The log file must not use circular logging. This is the log rotation behavior where a file is overwritten with new entries, or renamed and then the same file name is reused for continued logging.
+- The log file must use ASCII or UTF-8 encoding. Other formats, such as UTF-16, aren't supported.
+- On Linux, time zone conversion isn't supported for timestamps in the logs.
+- As a best practice, the log file should include the date and time it was created, to prevent log rotation from overwriting or renaming it.
 
-## Converting character-encoding, date & time format
+## Converting character encoding and date/time format
 
-ECX for Windows log file is encoded in SJIS, and has the date and time format as `YYYY/MM/DD HH:MM:SS.ZZZ`.
-The following command can be used to convert it into UTF-8 and `YYYY-MM-D HH:MM:SS` format:
+The ECX for Windows log file is encoded in SJIS and uses the date/time format `YYYY/MM/DD HH:MM:SS.ZZZ`. The following commands convert it to UTF-8 with the `YYYY-MM-DD HH:MM:SS` format:
 
 1. Install [Git for Windows](https://gitforwindows.org/).
-2. Open `Git Bash`, then issue the following commands.
-3. Change directory to the location where the ECX log files were extracted.
+2. Open `Git Bash`, then run the following commands.
+3. Change directory to the location where the ECX log files were extracted:
     ```sh
     cd /c/Users/USER-A/Downloads/SampleCluster/node-1/log
     ```
-4. Convert the character encoding from SJIS to UTF-8.
+4. Convert the character encoding from SJIS to UTF-8:
     ```sh
     iconv -f SJIS -t UTF-8 userlog.00.log > userlog.00.utf8.log
     ```
-5. Convert the date time format.
+5. Convert the date/time format:
     ```sh
     sed -i -r 's/^(....)\/(..)\/(.. ..:..:..)\./\1-\2-\3 /' userlog.00.utf8.log
     ```
-Note: The Kusto todatetime() command will return a NULL string if `YYYY/MM/DD HH:MM:SS.ZZZ` date/time format is used. However, if forward slashes are replaced with hyphens in the date/time string, todatetime() seems to work for `YYYY-MM-DD HH:MM:SS.ZZZ`.
-## Custom Logs
 
-First you will need a Log Analytics workspace in Azure. Search for *Log Analytics workspaces* from the Azure home page and create a new workspace.   
+Note: Kusto's `todatetime()` command returns a `NULL` string if the `YYYY/MM/DD HH:MM:SS.ZZZ` format is used. Replacing forward slashes with hyphens (`YYYY-MM-DD HH:MM:SS.ZZZ`) resolves this.
+
+## Custom logs
+
+> **A note on the Log Analytics agent**: the steps below use the legacy Log Analytics agent (MMA), which Microsoft deprecated in August 2024. For new setups, use the Azure Monitor Agent (AMA) instead — see [Azure_Monitor_Agent_with_Azure_Arc.md](Azure_Monitor_Agent_with_Azure_Arc.md) for on-premises servers connected via Azure Arc, or [Azure_Monitor_Agent_by_using_Microsoft_Sentinel.md](Azure_Monitor_Agent_by_using_Microsoft_Sentinel.md) for a Microsoft Sentinel-based setup. The steps below are kept for reference and for existing deployments still on the legacy agent.
+
+First you'll need a Log Analytics workspace in Azure. Search for *Log Analytics workspaces* from the Azure home page and create a new workspace.
 
 ### Link to log files on your PC
 
@@ -50,70 +53,73 @@ Install the Log Analytics agent on your PC.
 2. Select the Windows servers tab or the Linux servers tab, depending on the OS where your log files exist.
 3. Expand *Log Analytics agent instructions*.
 4. Download the appropriate agent for your OS.
-5. Copy the *Workspace ID* and the *Primary key* (which will be used later to link your PC to the Azure Log Analytics workspace).
-6. Install the Log Analytics agent on your PC and input the *Workspace ID* and the *Primary key* in the appropriate fields.
+5. Copy the *Workspace ID* and the *Primary key* (used later to link your PC to the Azure Log Analytics workspace).
+6. Install the Log Analytics agent on your PC and enter the *Workspace ID* and *Primary key* in the appropriate fields.
 
-Add custom logs.
+Add custom logs:
 
-1. Open the Log Analytics workspace you created and click on *Custom logs* under *Settings*.
-2. Click on *Add custom log* under the *Custom tables* tab.
+1. Open the Log Analytics workspace you created and click *Custom logs* under *Settings*.
+2. Click *Add custom log* under the *Custom tables* tab.
 3. Select one of the log files in the log files folder on your PC as a sample log. Click Next.
-4. The contents of the log file should display in the Preview windows. Choose *New line* as the delimiter. Click Next.
-5. Choose the appropriate OS as the *Type* and then enter the path to the log files.    
-    e.g. C:\\temp\\logfiles\\\*.log    
+4. The contents of the log file should display in the Preview window. Choose *New line* as the delimiter. Click Next.
+5. Choose the appropriate OS as the *Type*, then enter the path to the log files.
+    e.g. `C:\temp\logfiles\*.log`
     Click Next.
-7. Enter a name for the log file. Note that it will automatically be appended with '\_CL'. Click Next.
-8. Click *Create*.
+6. Enter a name for the log file. Note that `_CL` will be automatically appended. Click Next.
+7. Click *Create*.
 
 ## The first step for analyzing logs
 
-Assuming `NODE1_CL` as the Type of the custom log.  
-Open the Log Analytics workspace you created and click on *logs* under *General*.
+The following examples assume `NODE1_CL` as the Type of the custom log. Open the Log Analytics workspace you created and click *Logs* under *General*.
 
-### Extracting all the entry
+### Extracting all entries
 
-Input the following > `Run`
+Enter the following, then click `Run`:
 
-    ```KQL
-    search * | where (Type =="NODDE1_CL")
-    ```
-    or just run the following
-    ```KQL
-    NODE1_CL
-    ```
+```KQL
+search * | where Type == "NODE1_CL"
+```
 
-The output like the following is got.  
-*This behavior seems becoming possible after 24 hours from uploading the log file.*
+or simply:
+
+```KQL
+NODE1_CL
+```
+
+The output should look like the following.
+*Note: this behavior seems to only become available around 24 hours after uploading the log file.*
 
 ![ScreenShot_20230131_122743.png](ScreenShot_20230131_122743.png)
 
 ### Extracting ERRORs
-Input the following > `Run`
+
+Enter the following, then click `Run`:
 
 ```KQL
 NODE1_CL
-| extend ERR = extract("(ERROR)", 1, RawData )
+| extend ERR = extract("(ERROR)", 1, RawData)
 | where ERR == "ERROR"
 | distinct RawData
 ```
+
 ![ScreenShot_20230203_125200.png](ScreenShot_20230203_125200.png)
 
-## Alert Mail
+## Alert mail
 
-### Create alert rule
+### Create an alert rule
 
 Log query alert rules create an alert when a log query returns a particular result.
 
-1. Select [New alert rule] to create a new alert rule based on the current log query.
-2. Set the [Operator] and [Threshold value] in alert logic. An alert is created when this value is true.
-3. Click [Add action groups] to add one to the alert rule. Select a Subscription and Resource group for the action group and give it an Action group name that will appear in the portal and a Display name that will appear in email and SMS notifications.
-4. Configure different settings for the alert rule in the Alert rule details section.(Alert rule name,Description,Severity for the alert,Enable alert upon creation)
+1. Select **New alert rule** to create a new alert rule based on the current log query.
+2. Set the **Operator** and **Threshold value** in the alert logic. An alert is created when this condition is true.
+3. Click **Add action groups** to add one to the alert rule. Select a Subscription and Resource group for the action group, and give it an Action group name (shown in the portal) and a Display name (shown in email and SMS notifications).
+4. Configure the remaining settings in the Alert rule details section (Alert rule name, Description, Severity, and whether to enable the alert upon creation).
 
-### Problem
-- How to use the alert function.
-- Originally, a function that can be notified when an important condition is found in the monitoring data.
-- But I can't think of a rule to notify because I just add logs to the custom log all at once.
+### Notes on alerting
+
+Alert rules are most useful when there's a specific, well-defined condition to notify on — for example, a spike in `ERROR` entries within a short window, rather than every log line being ingested. When setting up alerting for a custom log, define the query and threshold around the specific condition you want to be notified about, rather than alerting on all incoming data.
 
 ## Methods to analyze ECX log files in Azure
 
-1. Use **Azure Arc-enabled servers with Azure Monitor Agent**. Detailed instructions on creating Azure resources and configuring on-premises ECX VM servers for this solution can be found [here](Azure_Monitor_Agent_with_Azure_Arc.md). 
+1. **Azure Arc-enabled servers with Azure Monitor Agent** — detailed instructions for creating the Azure resources and configuring on-premises ECX VM servers are in [Azure_Monitor_Agent_with_Azure_Arc.md](Azure_Monitor_Agent_with_Azure_Arc.md).
+2. **Azure Monitor Agent via Microsoft Sentinel** — an alternative setup that also configures Microsoft Sentinel and Teams alert integration; see [Azure_Monitor_Agent_by_using_Microsoft_Sentinel.md](Azure_Monitor_Agent_by_using_Microsoft_Sentinel.md).
