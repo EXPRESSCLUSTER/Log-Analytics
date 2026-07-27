@@ -125,4 +125,4 @@ Alert rules are most useful when there's a specific, well-defined condition to n
 2. **Azure Monitor Agent via Microsoft Sentinel** — an alternative setup that also configures Microsoft Sentinel and Teams alert integration; see [Azure_Monitor_Agent_by_using_Microsoft_Sentinel.md](Azure_Monitor_Agent_by_using_Microsoft_Sentinel.md).
 
 ## Methods to analyze ECX log files with Perl script
-A Perl script has been added to this repository which can help with ECX log file troubleshooting by ordering trouble events by the time that they occurred. The script file is called merge.pl(merge.pl).
+A Perl script has been added to this repository which can help with ECX log file troubleshooting by ordering trouble events by the time that they occurred. The script file is called [merge.pl](merge.pl).
