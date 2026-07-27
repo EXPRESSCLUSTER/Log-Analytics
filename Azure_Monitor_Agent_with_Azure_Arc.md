@@ -116,7 +116,7 @@ A Data Collection Rule will define the data collection process in Azure Monitor.
 10.	Return to the **Basics** tab and select the **Data Collection Endpoint** just created.
 11.	Click **Next : Resources** and then **Next : Collect and deliver** to continue.
 12.	Click **Add data source**.
-13.	Pull down the drop box under **Data source type** to reveal the options available.
+13.	Pull down the drop box under **Data source type** to reveal the options available.    
 ![Data Source Type](images/Installed%20Data%20Source%20Type.png)
 14.	Select **Custom Text Logs**.    
 *Note that if no data collection endpoint was created and selected earlier, this option will not be available.
